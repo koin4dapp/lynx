@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+<head></head>
+<body>
+<!--caution, this sample try to open account on koin4kontrak smart contract on TLOS mainnet-->
+<p>Welcome:<span id="accountname"></span></p>
+<input type="button" value="Open Account" id="openaccount"/>
+<input type="button" value="Deposit" id="deposit"/>
+<input type="button" value="Withdraw" id="withdraw"/>
+<div id="logger"></div>
+<script>
+function elem(id) { return document.getElementById(id); }
+elem("openaccount").addEventListener('click',(e) => { openaccount('4,KOIN'); e.preventDefault();}, false);
+elem("deposit").addEventListener('click',(e) => { deposit('1.0000 TLOS'); e.preventDefault();}, false);
+elem("withdraw").addEventListener('click',(e) => { withdraw('100.0000 KOIN'); e.preventDefault();}, false);
+</script>
+<script>
+//initialize your variabel
+var lynx, lynxAccountName, lynxAccountAuthority;
+// Add an event listener to be to set variable
+// once the lynxMobile object has been inject to window.
+window.addEventListener("lynxMobileLoaded", function() {
+    // lynx is on the window and ready!
+	lynx=true;
+	lynxAccountAuthority='active';
+	(async () => {
+		let result;
+		try {
+			result = await window.lynxMobile.requestSetAccountName(); //await return promise
+		} catch (err) {
+			console.log(err);
+		}
+		lynxAccountName=result;
+		elem("accountname").innerText = lynxAccountName;
+	})();
+});
+
+function getAccountName() {
+	if (lynx)
+		return lynxAccountName;
+	else
+		return "unknown";
+}
+
+function getAccountAuthority() {
+	if (lynx)
+		return lynxAccountAuthority;
+	else
+		return "unknown";
+}
+
+function error2String(obj) {
+	if (typeof obj === 'string' || obj instanceof String) 
+		return obj;
+	else
+		return JSON.stringify(obj);
+}
+
+function doAction(obj, callback) {
+	if (!lynx) {
+		alert('No Lynx Mobile Wallet detected!');
+	} else {
+		(async () => {
+			let result;
+			try {
+				result = await window.lynxMobile.transact({actions:obj});
+				callback(result);
+			} catch (error) {
+				alert(error2String(error));
+			}
+		})();
+	}
+}
+
+function openaccount(symbol) {
+	doAction([
+			{
+				account: 'koin4kontrak',
+				name:    'open',
+				authorization: [{
+					actor:      getAccountName(),
+					permission: getAccountAuthority()
+				}],
+				data: {
+					owner: getAccountName(),
+					symbol: symbol,
+					ram_payer: getAccountName()
+				}
+			}
+	], function(result){		
+		const logger = elem("logger");
+		logger.innerText = JSON.stringify(result);	
+	});
+}
+
+function deposit(quantity) {	
+	doAction([
+			{
+				account: 'eosio.token',
+				name:    'transfer',
+				authorization: [{
+					actor:      getAccountName(),
+					permission: getAccountAuthority()
+				}],
+				data: {
+					from: getAccountName(),
+					to: 'koin4kontrak',
+					quantity: quantity,
+					memo: 'deposit ' + quantity
+				}
+			}
+	], function(result){
+		const logger = elem("logger");
+		logger.innerText = JSON.stringify(result);
+		}
+	);
+}
+
+function withdraw(quantity) {
+	doAction([
+			{
+				account: 'koin4kontrak',
+				name:    'withdraw',
+				authorization: [{
+					actor:      getAccountName(),
+					permission: getAccountAuthority()
+				}],
+				data: {
+					holder: getAccountName(),
+					quantity: quantity
+				}
+			}
+	], function(result){
+		const logger = elem("logger");
+		logger.innerText = JSON.stringify(result);
+		}
+	);
+}
+</script>
+</body>
+</html>
